@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPG — May 16, 2026 — Pierre De Sousa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --cream:   #F5EFE4;
+      --ink:     #1A1714;
+      --oxblood: #6B2B2B;
+      --grey:    #7A6F60;
+    }
+
+    html {
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'Cormorant Garamond', Garamond, 'EB Garamond', Georgia, serif;
+      font-size: 22px;
+      font-weight: 500;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--cream);
+      padding: 96px 32px 112px;
+    }
+
+    .page {
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    /* ── Section labels ── */
+    .label {
+      display: block;
+      font-size: 15px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--grey);
+      font-weight: 400;
+      margin-bottom: 30px;
+    }
+
+    /* ── Hero ── */
+    .hero-invitation {
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--grey);
+      margin-bottom: 16px;
+    }
+
+    .hero-supertitle {
+      font-size: 46px;
+      font-weight: 600;
+      line-height: 1.02;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+
+    .hero-headline {
+      font-size: 20px;
+      font-weight: 400;
+      color: var(--grey);
+      line-height: 1.02;
+      letter-spacing: -0.02em;
+      margin-bottom: 38px;
+    }
+
+    .hero-meta {
+      font-size: 16.5px;
+      color: var(--grey);
+      letter-spacing: 0.01em;
+    }
+
+    .hero-meta .date {
+      color: var(--oxblood);
+    }
+
+    /* ── Ornament ── */
+    .ornament {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 80px 0;
+    }
+
+    .ornament::before,
+    .ornament::after {
+      content: '';
+      display: block;
+      width: 34px;
+      height: 1px;
+      background: var(--oxblood);
+      flex-shrink: 0;
+    }
+
+    .ornament-mark {
+      color: var(--oxblood);
+      font-size: 8px;
+      line-height: 1;
+      margin: 0 11px;
+    }
+
+    .ornament-final::before,
+    .ornament-final::after {
+      display: none;
+    }
+
+    .ornament-final .ornament-mark {
+      font-size: 8px;
+      letter-spacing: 10px;
+      padding-left: 10px;
+    }
+
+    /* ── Body text ── */
+    p {
+      font-size: 22px;
+      line-height: 1.65;
+      margin-bottom: 1.35em;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* ── What you'll do ── */
+    .practice-item {
+      margin-bottom: 1.8em;
+    }
+
+    .practice-item:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .practice-lead {
+      display: block;
+      font-style: normal;
+      font-weight: 600;
+      font-size: 18px;
+      margin-bottom: 0.2em;
+    }
+
+    .practice-body {
+      display: block;
+      margin: 0;
+    }
+
+    .practice-note {
+      margin-top: 2em;
+      color: var(--grey);
+      font-size: 16px;
+    }
+
+    /* ── Testimonials ── */
+    .testimonial {
+      margin-bottom: 2.4em;
+    }
+
+    .testimonial:last-child {
+      margin-bottom: 0;
+    }
+
+    .testimonial blockquote {
+      font-style: italic;
+      font-weight: 500;
+      font-size: 20px;
+      line-height: 1.55;
+      margin-bottom: 0.7em;
+    }
+
+    .testimonial cite {
+      display: block;
+      font-style: normal;
+      font-weight: 400;
+      color: var(--oxblood);
+      font-size: 15px;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── About photo ── */
+    .pierre-photo {
+      display: block;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: center 20%;
+      margin-bottom: 20px;
+    }
+
+    /* ── Theme ── */
+    .theme-word {
+      font-style: italic;
+    }
+
+    /* ── Logistics ── */
+    .logistics-list {
+      list-style: none;
+    }
+
+    .logistics-item {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      column-gap: 24px;
+      margin-bottom: 1.15em;
+      align-items: baseline;
+    }
+
+    .logistics-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .logistics-label {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--grey);
+      font-weight: 400;
+      padding-top: 3px;
+    }
+
+    .logistics-value {
+      font-size: 18px;
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    .logistics-value a {
+      color: var(--ink);
+      text-decoration: none;
+      border-bottom: 1px solid currentColor;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 580px) {
+      body {
+        padding: 48px 24px 72px;
+      }
+
+      .hero-headline {
+        font-size: 32px;
+        line-height: 1.08;
+        margin-bottom: 28px;
+      }
+
+      .ornament {
+        margin: 56px 0;
+      }
+
+      .testimonial blockquote {
+        font-size: 19px;
+      }
+
+      .logistics-item {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+        margin-bottom: 1.6em;
+      }
+
+      .logistics-label {
+        margin-bottom: 3px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- HERO -->
+    <section class="hero">
+      <p class="hero-invitation">An invitation to our next Community Practice Group (CPG)</p>
+      <h1 class="hero-supertitle">CPGs are live experiential masterclasses about consciousness, shadow &amp; awakening — explored through relational practice within a trusted community.</h1>
+      <p class="hero-meta">
+        <span class="date">Saturday, May 16, 2026</span> &middot; Time TBD &middot; Zoom
+      </p>
+    </section>
+
+    <div class="ornament" role="separator"><span class="ornament-mark">◆</span></div>
+
+    <!-- WHAT IT IS -->
+    <section>
+      <span class="label">What It Is</span>
+      <p>A small group meets for two hours, guided by Pierre, to practice a specific kind of dialogue and attention together. The work happens in the relational field — not on a meditation cushion alone, but with other people, in real time. People tend to leave more present, less reactive, and noticeably better at the conversations that actually matter.</p>
+    </section>
+
+    <div class="ornament" role="separator"><span class="ornament-mark">◆</span></div>
+
+    <!-- THIS SESSION'S THEME -->
+    <section>
+      <span class="label">This Session's Theme</span>
+      <p>Each session explores a specific theme. This one is on <em class="theme-word">love</em> — not romantically, but as a relational skill: how we extend care, how we receive it, what gets in the way. It's the deepest exploration of this theme Pierre has run.</p>
+    </section>
+
+    <div class="ornament" role="separator"><span class="ornament-mark">◆</span></div>
+
+    <!-- WHAT YOU'LL DO -->
+    <section>
+      <span class="label">What We'll Do</span>
+      <p class="practice-item"><span class="practice-lead">Guided group practices.</span><span class="practice-body">Pierre walks the group through specific exercises.</span></p>
+      <p class="practice-item"><span class="practice-lead">Paired work in small breakouts.</span><span class="practice-body">Practising directly with other attendees in a smaller setting.</span></p>
+      <p class="practice-item"><span class="practice-lead">Group reflection.</span><span class="practice-body">Sharing what came up, what shifted, what's worth taking home.</span></p>
+      <p class="practice-note">No prior experience needed. First-timers are the norm, not the exception.</p>
+    </section>
+
+    <div class="ornament" role="separator"><span class="ornament-mark">◆</span></div>
+
+    <!-- TESTIMONIALS -->
+    <section>
+      <span class="label">What People Say</span>
+
+      <div class="testimonial">
+        <blockquote>I was shocked at how open everyone was. Quite profound realisations and shifts.</blockquote>
+        <cite>— Alex, first-time attendee</cite>
+      </div>
+
+      <div class="testimonial">
+        <blockquote>If personal development was a firecracker, this is a truck full of bombs. Leaves a big permanent dent, not just some noise that sounds and feels good for a tiny bit.</blockquote>
+        <cite>— Florjan</cite>
+      </div>
+
+      <div class="testimonial">
+        <blockquote>I'm more sociable at work. I'm handling difficult people way more easily. With my friends, I don't think I've had this level of trust and respect before. It's not a perfect life — I still have problems, arguments, and stress. But less. Much less. There's a sense of autonomy that I can handle these things when they come up.</blockquote>
+        <cite>— Cristian</cite>
+      </div>
+    </section>
+
+    <div class="ornament" role="separator"><span class="ornament-mark">◆</span></div>
+
+    <!-- ABOUT PIERRE -->
+    <section>
+      <span class="label">About Pierre</span>
+      <img src="image-1777928990760.webp" alt="Pierre De Sousa" class="pierre-photo">
+      <p>Pierre De Sousa is the founder of Social Sage and has spent the last seven years immersed in the study of consciousness, the mind, and emotional decision-making. He has trained across sixteen psychotherapy systems, lived with a Buddhist nun for a year and a half meditating ten hours a day, and conducted a meta-analysis of indigenous shamanic traditions from cultures around the world.</p>
+    </section>
+
+    <div class="ornament" role="separator"><span class="ornament-mark">◆</span></div>
+
+    <!-- LOGISTICS -->
+    <section>
+      <span class="label">Logistics</span>
+      <ul class="logistics-list">
+        <li class="logistics-item">
+          <span class="logistics-label">When</span>
+          <span class="logistics-value">Saturday, May 16, 2026 &middot; Time TBD</span>
+        </li>
+        <li class="logistics-item">
+          <span class="logistics-label">Where</span>
+          <span class="logistics-value">Zoom — link shared on sign-up</span>
+        </li>
+        <li class="logistics-item">
+          <span class="logistics-label">Cost</span>
+          <span class="logistics-value">Free for guests</span>
+        </li>
+        <li class="logistics-item">
+          <span class="logistics-label">Questions</span>
+          <span class="logistics-value"><a href="http://api.whatsapp.com/send?phone=447418626353" target="_blank" rel="noopener">Message Pierre on WhatsApp +44 7418 626353</a></span>
+        </li>
+      </ul>
+    </section>
+
+    <div class="ornament ornament-final" role="separator"><span class="ornament-mark">◆ ◆ ◆</span></div>
+
+  </div>
+</body>
+</html>
