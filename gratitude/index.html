@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BecomeUnshakeable — Voices</title>
+  <!-- PROTOTYPE — open directly in browser as file:// -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0A0A0F;
+      --star-text: #F5F1E8;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      overflow: hidden;
+      color: var(--star-text);
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ── CANVAS ── */
+    #constellation {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 45%, #0E0E1A 0%, #0A0A0F 68%);
+    }
+
+    /* ── STARS ── */
+    .star {
+      position: absolute;
+      cursor: pointer;
+      text-align: center;
+      opacity: 0;
+      max-width: 210px;
+      user-select: none;
+      animation: starAppear 1s ease forwards, starDrift var(--drift-dur, 25s) ease-in-out infinite;
+      will-change: transform;
+      transition: opacity 0.4s ease;
+    }
+
+    .star .fragment {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-style: normal;
+      font-weight: 400;
+      font-size: 15px; /* overridden per-star in JS */
+      line-height: 1.45;
+      letter-spacing: 0.01em;
+      color: var(--star-text);
+    }
+
+    .star .dot {
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: rgba(245,241,232,0.6);
+      margin: 7px auto 0;
+      box-shadow: 0 0 5px 1px rgba(245,241,232,0.35);
+    }
+
+    /* hover */
+    .star:hover .fragment {
+      text-shadow: 0 0 20px rgba(245,241,232,0.7);
+    }
+    .star:hover .dot {
+      box-shadow: 0 0 10px 3px rgba(245,241,232,0.7);
+    }
+
+    /* dimmed by theme filter or neighbour hover */
+    .star.dimmed {
+      opacity: 0.1 !important;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    /* visited — stays lit but slightly softer */
+    .star.visited .fragment {
+      color: rgba(245,241,232,0.65);
+    }
+    .star.visited .dot {
+      background: rgba(245,241,232,0.35);
+      box-shadow: 0 0 5px 1px rgba(245,241,232,0.25);
+    }
+
+    @keyframes starAppear {
+      from { opacity: 0; }
+      to   { opacity: var(--base-op, 0.75); }
+    }
+
+    @keyframes starDrift {
+      0%   { transform: translate(-50%, -50%) translate(0px, 0px); }
+      25%  { transform: translate(-50%, -50%) translate(var(--dx1, 0px), var(--dy1, 0px)); }
+      50%  { transform: translate(-50%, -50%) translate(var(--dx2, 0px), var(--dy2, 0px)); }
+      75%  { transform: translate(-50%, -50%) translate(var(--dx3, 0px), var(--dy3, 0px)); }
+      100% { transform: translate(-50%, -50%) translate(0px, 0px); }
+    }
+
+    /* ── THEME BAR ── */
+    #theme-bar {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 7px;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+      z-index: 50;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 0 20px;
+    }
+    #theme-bar.show { opacity: 1; }
+
+    .tbtn {
+      font-family: 'Inter', sans-serif;
+      font-size: 10.5px;
+      font-weight: 300;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: rgba(245,241,232,0.35);
+      background: transparent;
+      border: 1px solid rgba(245,241,232,0.13);
+      padding: 5px 13px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: color 0.3s, border-color 0.3s, background 0.3s;
+    }
+    .tbtn:hover { color: rgba(245,241,232,0.7); border-color: rgba(245,241,232,0.35); }
+    .tbtn.active {
+      color: var(--star-text);
+      border-color: rgba(245,241,232,0.6);
+      background: rgba(245,241,232,0.07);
+    }
+
+    /* ── COUNTER ── */
+    #counter {
+      position: fixed;
+      top: 24px; right: 28px;
+      font-size: 11px; font-weight: 300;
+      letter-spacing: 0.08em;
+      color: rgba(245,241,232,0.28);
+      opacity: 0; transition: opacity 0.8s ease;
+      z-index: 50;
+    }
+    #counter.show { opacity: 1; }
+
+    /* ── HINT ── */
+    #hint {
+      position: fixed;
+      bottom: 76px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px; font-weight: 300;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      color: rgba(245,241,232,0.3);
+      opacity: 0; transition: opacity 1.8s ease;
+      pointer-events: none; z-index: 50;
+      white-space: nowrap;
+    }
+    #hint.show { opacity: 1; }
+
+    /* ── PORTAL ── */
+    #backdrop {
+      position: fixed; inset: 0;
+      background: rgba(10,10,15,0.93);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 100;
+    }
+    #backdrop.open { opacity: 1; pointer-events: auto; }
+
+    #portal {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.97);
+      width: min(660px, 92vw);
+      max-height: 84vh;
+      overflow-y: auto;
+      padding: 48px 52px 52px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.45s ease 0.07s, transform 0.45s ease 0.07s;
+      z-index: 101;
+    }
+    #portal.open {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+    }
+
+    /* scrollbar */
+    #portal::-webkit-scrollbar { width: 4px; }
+    #portal::-webkit-scrollbar-track { background: transparent; }
+    #portal::-webkit-scrollbar-thumb { background: rgba(245,241,232,0.15); border-radius: 2px; }
+
+    #portal-close {
+      position: absolute; top: 18px; right: 22px;
+      background: none; border: none;
+      color: rgba(245,241,232,0.25); font-size: 20px;
+      cursor: pointer; line-height: 1;
+      transition: color 0.2s;
+    }
+    #portal-close:hover { color: rgba(245,241,232,0.8); }
+
+    .p-header {
+      display: flex; align-items: center; gap: 15px;
+      margin-bottom: 30px;
+    }
+    .p-avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      object-fit: cover; flex-shrink: 0;
+      background: rgba(245,241,232,0.07);
+    }
+    .p-avatar-placeholder {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(245,241,232,0.07);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'EB Garamond', serif;
+      font-size: 18px; color: rgba(245,241,232,0.4);
+    }
+    .p-name { font-size: 14px; font-weight: 400; letter-spacing: 0.03em; }
+    .p-date { font-size: 12px; color: rgba(245,241,232,0.38); margin-top: 3px; font-weight: 300; }
+
+    .p-body {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 17px; line-height: 1.75;
+      color: rgba(245,241,232,0.78);
+      font-weight: 400; white-space: pre-wrap;
+    }
+    .p-body mark {
+      background: none;
+      color: var(--star-text);
+      font-weight: 400;
+      text-shadow: 0 0 18px rgba(245,241,232,0.35);
+    }
+
+    .p-cont {
+      margin-top: 36px;
+    }
+    .p-cont-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .p-cont-header::before {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(245,241,232,0.11);
+    }
+    .p-cont-meta {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+      flex-shrink: 0;
+    }
+    .p-cont-tag {
+      font-size: 9.5px; letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: rgba(245,241,232,0.28);
+    }
+    .p-cont-date {
+      font-size: 11.5px;
+      color: rgba(245,241,232,0.4);
+      font-weight: 300;
+    }
+    .p-cont .p-body {
+      color: rgba(245,241,232,0.68);
+    }
+
+    /* ── BACKGROUND STAR FIELD ── */
+    #bg-stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── CONNECTING LINES ── */
+    #lines-svg {
+      position: fixed;
+      inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 6;
+      overflow: visible;
+    }
+    #lines-svg line {
+      stroke: rgba(245,241,232,0.13);
+      stroke-width: 0.5;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    #lines-svg.active line { opacity: 1; }
+
+    /* ── FILM GRAIN ── */
+    #grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9;
+      opacity: 0.038;
+      /* canvas bg set in JS */
+    }
+
+    /* ── VIGNETTE ── */
+    #vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 8;
+      background: radial-gradient(ellipse at 50% 50%,
+        transparent 30%,
+        rgba(10,10,15,0.45) 65%,
+        rgba(10,10,15,0.80) 100%);
+    }
+
+    /* ── MOBILE ── */
+    @media (max-width: 767px) {
+      /* pannable in both directions — bg-stars/grain/vignette stay fixed behind */
+      html, body { overflow: auto; height: auto; }
+
+      #constellation {
+        position: relative;
+        min-height: 190vh;
+        min-width: 150vw;
+        padding-bottom: 90px;
+        background: transparent;
+      }
+
+      /* no keyframe animation — JS stagger handles opacity */
+      .star {
+        position: absolute !important;
+        animation: none !important;
+        opacity: 0;
+        transition: opacity 0.7s ease;
+        max-width: 150px;
+        will-change: auto !important;
+      }
+      .star .fragment {
+        text-align: center;
+        line-height: 1.45;
+        text-shadow: none;
+      }
+      .star .dot { display: block; }
+      .star.dimmed { opacity: 0.08 !important; pointer-events: none; }
+      .star:active .dot {
+        box-shadow: 0 0 12px 3px rgba(245,241,232,0.65);
+      }
+
+      #theme-bar {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        transform: none; width: 100%;
+        background: rgba(10,10,15,0.93);
+        border-top: 1px solid rgba(245,241,232,0.07);
+        padding: 10px 14px; gap: 6px;
+        flex-wrap: nowrap; overflow-x: auto;
+        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch;
+      }
+      #theme-bar::-webkit-scrollbar { display: none; }
+
+      #portal {
+        width: 100%; height: 100dvh; max-height: 100dvh;
+        top: 0; left: 0;
+        transform: translateY(8px);
+        padding: 40px 22px 80px;
+        border-radius: 0;
+        overflow-y: auto;
+      }
+      #portal.open { transform: translateY(0); }
+
+      #counter { top: 14px; right: 18px; }
+      #hint { bottom: 58px; font-size: 10.5px; letter-spacing: 0.14em; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg-stars" aria-hidden="true"></canvas>
+<svg id="lines-svg" aria-hidden="true"></svg>
+<div id="grain" aria-hidden="true"></div>
+<div id="vignette" aria-hidden="true"></div>
+
+<div id="constellation"></div>
+
+<div id="theme-bar">
+  <button class="tbtn active" data-theme="all">All</button>
+  <button class="tbtn" data-theme="Work &amp; Mastery">Work &amp; Mastery</button>
+  <button class="tbtn" data-theme="Relationships">Relationships</button>
+  <button class="tbtn" data-theme="Inner Calm">Inner Calm</button>
+  <button class="tbtn" data-theme="Belonging">Belonging</button>
+  <button class="tbtn" data-theme="Transformation">Transformation</button>
+</div>
+
+<div id="counter"></div>
+<div id="hint">click a star</div>
+
+<div id="backdrop"></div>
+<div id="portal" role="dialog" aria-modal="true">
+  <button id="portal-close" aria-label="Close">&#x2715;</button>
+  <div class="p-header">
+    <div id="p-avatar-wrap"></div>
+    <div>
+      <div class="p-name" id="p-name"></div>
+      <div class="p-date" id="p-date"></div>
+    </div>
+  </div>
+  <div class="p-body" id="p-text"></div>
+  <div class="p-cont" id="p-cont" style="display:none">
+    <div class="p-cont-header">
+      <div class="p-cont-meta">
+        <span class="p-cont-tag">continued</span>
+        <span class="p-cont-date" id="p-cont-date"></span>
+      </div>
+    </div>
+    <div class="p-body" id="p-cont-text"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day:'numeric', month:'long', year:'numeric'
+  });
+}
+
+function highlight(text, frag) {
+  // strip surrounding quotes from fragment key
+  const needle = frag.replace(/^[“"]+|[”"]+$/g, '').replace(/[“”]/g,'"');
+  const idx = text.toLowerCase().indexOf(needle.toLowerCase());
+  if (idx < 0) return esc(text);
+  return esc(text.slice(0, idx))
+    + '<mark>' + esc(text.slice(idx, idx + needle.length)) + '</mark>'
+    + esc(text.slice(idx + needle.length));
+}
+
+// seeded pseudo-random (deterministic per star index)
+function pr(seed) {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
+function signed(v) { return v > 0.5 ? (v - 0.5) * 2 : -((0.5 - v) * 2); }
+
+// ── Background star field ─────────────────────────────────────────────────────
+function drawBgStars() {
+  const canvas = document.getElementById('bg-stars');
+  const W = canvas.width  = window.innerWidth;
+  const H = canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  for (let i = 0; i < 160; i++) {
+    const x  = pr(i * 3.14159) * W;
+    const y  = pr(i * 2.71828) * H;
+    const r  = 0.4 + pr(i * 1.41421) * 0.85;
+    const op = 0.07 + pr(i * 1.73205) * 0.18;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(245,241,232,${op.toFixed(2)})`;
+    ctx.fill();
+  }
+}
+
+// ── Film grain (rendered once to canvas, tiled via CSS) ───────────────────────
+(function initGrain() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(256, 256);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const g = Math.floor(Math.random() * 255);
+    d[i] = d[i+1] = d[i+2] = g;
+    d[i+3] = Math.floor(Math.random() * 18 + 2);
+  }
+  ctx.putImageData(img, 0, 0);
+  const grain = document.getElementById('grain');
+  grain.style.backgroundImage = `url(${c.toDataURL()})`;
+  grain.style.backgroundRepeat = 'repeat';
+  grain.style.backgroundSize = '256px 256px';
+})();
+
+// ── Visited ──────────────────────────────────────────────────────────────────
+const STORE_KEY = 'bu_visited_v1';
+function getVisited() {
+  try { return new Set(JSON.parse(localStorage.getItem(STORE_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function saveVisit(id) {
+  const v = getVisited(); v.add(id);
+  try { localStorage.setItem(STORE_KEY, JSON.stringify([...v])); } catch {}
+}
+
+function updateCounter(total) {
+  document.getElementById('counter').textContent =
+    total + ' stars · ' + getVisited().size + ' visited';
+}
+
+// ── Theme cluster positions (desktop, % of viewport) ─────────────────────────
+const CLUSTERS = {
+  'Work & Mastery':  { cx: 25, cy: 28 },
+  'Relationships':   { cx: 74, cy: 26 },
+  'Inner Calm':      { cx: 20, cy: 70 },
+  'Belonging':       { cx: 75, cy: 71 },
+  'Transformation':  { cx: 50, cy: 50 },
+};
+const JITTER = 16; // % radius
+
+// ── Portal ───────────────────────────────────────────────────────────────────
+let portalOpen = false;
+
+function openPortal(star, t) {
+  const inCont = star.fragment_in === 'continuation';
+  const src    = inCont ? t.continuation : t.parent;
+
+  // Avatar
+  const wrap = document.getElementById('p-avatar-wrap');
+  wrap.innerHTML = '';
+  const img = document.createElement('img');
+  img.className = 'p-avatar';
+  img.alt = t.author.name;
+  img.src = t.author.avatar;
+  img.onerror = function () {
+    // fallback: initial circle
+    const ph = document.createElement('div');
+    ph.className = 'p-avatar-placeholder';
+    ph.textContent = t.author.name.charAt(0).toUpperCase();
+    wrap.replaceChild(ph, img);
+  };
+  wrap.appendChild(img);
+
+  document.getElementById('p-name').textContent = t.author.name;
+  document.getElementById('p-date').textContent = fmtDate(src.date_iso);
+
+  // Main body
+  const mainHtml = inCont
+    ? esc(t.parent.text)
+    : highlight(t.parent.text, star.fragment);
+  document.getElementById('p-text').innerHTML = mainHtml;
+
+  // Continuation
+  const contEl = document.getElementById('p-cont');
+  if (t.continuation) {
+    contEl.style.display = '';
+    document.getElementById('p-cont-date').textContent = fmtDate(t.continuation.date_iso);
+    document.getElementById('p-cont-text').innerHTML = inCont
+      ? highlight(t.continuation.text, star.fragment)
+      : esc(t.continuation.text);
+  } else {
+    contEl.style.display = 'none';
+  }
+
+  document.getElementById('backdrop').classList.add('open');
+  document.getElementById('portal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  portalOpen = true;
+}
+
+function closePortal() {
+  if (!portalOpen) return;
+  document.getElementById('backdrop').classList.remove('open');
+  document.getElementById('portal').classList.remove('open');
+  document.body.style.overflow = '';
+  portalOpen = false;
+}
+
+document.getElementById('portal-close').addEventListener('click', closePortal);
+document.getElementById('backdrop').addEventListener('click', closePortal);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePortal(); });
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+const DATA = {
+  "meta": {
+    "source": "skool.com/becomeunshakeable/gratitude-and-feedback-request",
+    "themes": ["Work & Mastery", "Relationships", "Inner Calm", "Belonging", "Transformation"],
+    "star_count": 20,
+    "notes": [
+      "Each star references a testimonial by id. Some testimonials are referenced by multiple stars (e.g. Cristian's Mar 7 + Mar 14 self-reply yields 4 stars).",
+      "fragment is a verbatim substring of the body it appears in (parent or continuation). The portal can highlight by simple substring match.",
+      "Avatars point to assets.skool.com and may expire. Download locally for production.",
+      "Dates assumed 2026 based on file context."
+    ]
+  },
+  "testimonials": {
+    "raffaello-mar-7": {
+      "author": { "name": "Raffaello", "avatar": "https://assets.skool.com/f/d1b5983b197d40dabb85b0032f277c4e/32996f9a699a416abdb4f52cc95e43a03e490d339bc24ce4ba04933227924df5.jpg" },
+      "parent": {
+        "date_iso": "2026-03-07",
+        "text": "The call was truly impact full in some many ways.\n\nThe best way to describe it is imagine you were in a state of feeling fully relaxed and confident with everything that you are feeling and thinking and then beeing able to communicate with power.\n\nTo sharpen your awarness to the point where you can notice things in others that they themselves are not even ware of.\n\nSure all of this abilities that we train on the call help in real life. For me for example my results with girls drastically improved, but not even the amount of experiences i had but the depth, joy, ease and love i felt during having those.\n\nThis is next next next level shit. Like holy fuck. it's so deep that you can't even imagine it after you start to walk the path, the next layer appears and you realise it's even more amazing that you thought. Then you realise you are just at the beginning. Than you are just greatful to be part of it"
+      },
+      "continuation": {
+        "date_iso": "2026-03-13",
+        "text": "yes feels like i got 4 years more mature in 4 months"
+      }
+    },
+    "cristian-mar-7": {
+      "author": { "name": "Cristian", "avatar": "avatars/cristian-m.jpg" },
+      "parent": {
+        "date_iso": "2026-03-07",
+        "text": "Awesome call.\n\nThe community AND practice aspects of these calls are two things that make them great for me.\n\nIt really feels like the people in these calls are mature, intelligent, loving, and open minded. It creates a safe environment where we can work on the softer tones of being a man, we can explore these softer tones together… what also emerges is this powerful wisdom and groundedness that we obtain from this introspection and sharing with others. it's interesting how that seems to work… it's somewhat unexpected for such power to come up out of exploring the likes of love and vulnerability.\n\nA lot of pragmatic wisdom and a sort of intuition comes out of it. My capacity to learn for example has grown so much. I'm in sales for cybersecurity and now I'm studying some technical stuff. I feel like my capacity and ability to learn the technical stuff is directly related to how I can see & understand the complexity of the world. My mind's malleability and adaptability definitely has come from a lot of these practices.\n\nThe amount of love I have for family, friends, coworkers, it's transpiring from the work we learn here. My capacity for love makes me so much more understanding of others which makes people drawn to me, it builds trust, respect, and it also gives me a ton of peace. The coolest thing is, I don't really have to think about these things, they just emerge. They just happen. It's so so rewarding & cool. Not cool in a 'I'm cool' way. Cool in a fascinating way, in a way that makes life so much more enjoyable. Fuller."
+      },
+      "continuation": {
+        "date_iso": "2026-03-14",
+        "text": "all of this. Thanks a lot ❤️\n\nI'm more sociable at work. Before I wasn't as sociable from fear of being vulnerable. I didn't realise I have so much to offer to the world. It's helped me open up new opportunities for career because managers just see so much more of me (example being I got referred into a technical selling role which I never even knew of - more money and a very very promising future if I do get this role).\n\nI enjoy chatting with my work colleagues. Sometimes I still get awkward or shy, and it's becoming more and more okay.\n\nI'm handling difficult people way more easily. Type A personalities at work for example with quite a complex development and persuasion, now I can stand my ground much better. See through tactics much better.\n\nMy parents are kind of just leaving me alone now. For those reading, context is that my parents are Eastern European, quite conservative in some ways. Now they seem to just trust that I know what I'm doing, and even if what I'm doing doesn't quite make sense for them, they're supportive of it rather than questioning it.\n\nWith my friends k don't think I've had this level of trust and respect before. And the sort of respect that doesn't feel hierarchical- it's a mutual respect amongst each other. It's incredible. It feels like it's pulling people towards a better life overall, really.\n\nAlso, I don't want this to seem like a perfect life. It's not, I still have problems, arguments, and stress. But less… much less… there is a sense of autonomy that I can handle these things when they come up. Sometimes I still get lost… and we take that at a step at a time"
+      }
+    },
+    "nick-mar-8": {
+      "author": { "name": "Nick", "avatar": "avatars/nick-hall.jpg" },
+      "parent": {
+        "date_iso": "2026-03-08",
+        "text": "The effects of this call are still unfolding for me a few days later.\n\nA lot of the impacts are actually quite personal, but what I can say is that because of this call I've noticed that:\n\n1) Life overall has just become easier and more peaceful\n\n2) The depth I can experience in relationships as well as my overall satisfaction from them has increased quite distinctly\n\nSuper grateful for these calls, thank you Pierre and everyone else."
+      }
+    },
+    "dillon-mar-10": {
+      "author": { "name": "Dillon", "avatar": "https://assets.skool.com/f/9ffebe68bdb042188d66b32c6f0d14bc/4829e50e36694802a59092466cc548125cf3803450664860b99384c7e752738e.jpg" },
+      "parent": {
+        "date_iso": "2026-03-10",
+        "text": "It felt very empowering. Not in a material and raw energy way but I left feeling more in control of myself and other social situations.\n\nI felt very stressed going in because it was my first time and (at the time) I thought I was vastly underinformed of the topics we would be covering inside of the call, didn't want to be seen as \"winging it.\"\n\nOnce I was actually in it, I kinda leaned into that stress and it actually helped me make a very good connection in our communication practice. I didn't realize it in the moment but my transparency about my states my mind was flowing through made my practice partner much more comfortable in their own authenticity as well which was a beautiful thing to witness.\n\nWhen we shared our experiences as a group, I realized my experience in many ways reflected the experience of others, piling on a newer belief of communication not necessarily needing to be \"correct\" and that building connections is a much more immersive and deeply emotional process then I realized in the past.\n\nI feel more connected to myself and others mostly without even needing to think about it. I now look forward to the practice every week to learn more about myself and the others I intend to communicate with compassionately. 🙏🏻"
+      }
+    },
+    "jack-mar-10": {
+      "author": { "name": "Jack", "avatar": "https://assets.skool.com/f/a955b4ac01514d6983a1b4686858d1df/123393a57b2a4a019b426e14ae40628c842c2b2e89fb4a99805bedf446bb9a30.jpg" },
+      "parent": {
+        "date_iso": "2026-03-10",
+        "text": "I thoroughly enjoyed both of Pierre's meditations in the beginning and at the end of the call. While a lot of the concepts go over my head as I'm a beginner in this journey, some of the analogies that Pierre uses really resonated with me. An example is when he talked about divided attention versus undivided attention and that meditation is about undivided attention. That really hit for me because it's this concept that it's pure. It's 100%. It's not like mostly there but it's absolute and it's powerful because it's how people can feel fully seen when other people have undivided attention.\n\nI had a profound experience connecting with another member during the breakout session, which is crazy because it's over a Zoom call and feeling his brotherly love and curiosity about me. Pretty crazy as a first-time meeting him. I felt very seen, very safe, very vulnerable and open to share. After sharing some of my projections about him and also hearing him share, we both felt a deep sense of relaxation.\n\nAnother concept that I enjoyed that Pierre shared was when we feel triggers. It's like if you're in a museum and you throw dirt onto one painting, the whole museum is not ruined, just that one little piece. It was an ultra positive way to view our minds in that the love and goodness are still intact.\n\nLooking forward to more CPGs!\n\nMuch love to Pierre and this group."
+      }
+    },
+    "florjan-mar-7-second": {
+      "author": { "name": "Florjan", "avatar": "https://assets.skool.com/f/2abd6ba8df754980ac6ae8dec3b65c15/ae9e877d54f3431587e93f6a2cb7b6004da7153f825f482a8abd0d1dead38689.jpg" },
+      "parent": {
+        "date_iso": "2026-03-07",
+        "text": "just as I wrote this, got a prospect being very pushy and difficult in the DMs.\n\nDespite projections arising, handling it with a lot of equanimity. She just wants to cut to the core of the matter, in her own way.\n\nSo nice to see the practice show up here"
+      }
+    },
+    "francois-apr-3": {
+      "author": { "name": "François", "avatar": "https://assets.skool.com/f/ac03702b29964d55b43809cb77b76bf7/9fbecaed5ea64d8f8ce9897ac04d843701b3650b474544c2aa0747e0a85f2fde.jpg" },
+      "parent": {
+        "date_iso": "2026-04-03",
+        "text": "This call was great and very eye opening. It was cool to open up and share with everybody.\n\nThe small breakout room was very helpful, it made me realise I'm not the only one in this situation (giving a lot with the feeling of not receiving as much at work). I was able to discuss it with 2 other people with the same pattern and I felt seen and understood.\n\nAlso, it made me realise that there are different forms of receiving at work, not just money and gratitude from my boss. My experiences are also a gift to myself, I'm improving my skills on a daily basis and it will help me in my career and the people I work with. I also realised that I don't need to put so much pressure on myself to get things done quickly."
+      }
+    },
+    "patrik-apr-3": {
+      "author": { "name": "Patrik", "avatar": "https://assets.skool.com/f/ffab5da82a0d437c8c9530b8ca39790c/ab22892c16c34404a6c29e63aac337d05db38ab52f0f4e47a926c21024244675.jpg" },
+      "parent": {
+        "date_iso": "2026-04-03",
+        "text": "Ok gonna write this while I still have energy, Today's call was nothing short of mindblowing.\n\nI experienced a state of merging with everything including baby pandas. And it was like When I was giving love i was also receving it in like a endless fractal that goes through each other.\n\nAnd I also got a deeper meaning, behind creating my business. A divne purpose so to say,\n\nLike the whole term radiating got a completely new taste and expereince, as i was not just radiating outwards, but that outwards was radiating through.\n\nIt also felt nice to be able to share my experieence with overgiving and struggling to recieve(Especially money) . ANd it gave me a lot of clarity.\n\nI feel like that was a permanent experience maybe it has not fully stabilised, but it feels like traces of it are just moving through my conciousness.\n\nNow im exhausted, (As it took quite a lot to focus after a stomach virus and still dealing with nicotine withdrawals.\n\nBut god am I glad I did, This was a call i would never want to miss.\n\nI find it hard to describe with words what i experienced. It was like I was the universe radiating through it all intomyself in a never ending tunnel.\n\nRadiatingception.\n\nJust wow"
+      }
+    },
+    "antonio-mar-7": {
+      "author": { "name": "Antonio", "avatar": "https://assets.skool.com/f/679bafbce43543338bf743eb296a6c6a/ff882ec7e4ae47638a4dc272cb169533b7ef6d06179f42c88a7035bf0b325033.jpg" },
+      "parent": {
+        "date_iso": "2026-03-07",
+        "text": "The call was particularly amazing today. Had breakthrough around stabilizing deep attunement in myself and others while remaining okay with whatever arise.\n\nAlso I had a glimpse of what it feels like to be in communion with the universe. Overall, it was amazing 🔥🔥🔥🔥🔥"
+      },
+      "continuation": {
+        "date_iso": "2026-03-13",
+        "text": "I had to expand. I was interacting without pre-planning thanks to a deep attunement inside myself. A complete integration head, heart and body into the way I was speaking and interacting with others. And without giving much thought to it, I was adapting to myself and others without conscious effort.\n\nOn a day to day basis, it is scary to talk from that place but thanks to the practices and the community as a whole, I was in a safe container to practice that. And it felt nice to be in that place of complete integration without any reactivity whatsoever. Now I know how it feels like to be in a state like that."
+      }
+    },
+    "antonio-apr-3": {
+      "author": { "name": "Antonio", "avatar": "https://assets.skool.com/f/679bafbce43543338bf743eb296a6c6a/ff882ec7e4ae47638a4dc272cb169533b7ef6d06179f42c88a7035bf0b325033.jpg" },
+      "parent": {
+        "date_iso": "2026-04-03",
+        "text": "What came up to me during practice today was a very interesting experience for me. I had the opportunity to open up around the different struggles I had with giving/receiving. This helped me have a better picture of what's going on in my psyche regarding that topic.\n\nAt the same time, some shame was arising but the fact I was around people with positive regard, it really affected me in a positive way and I felt deeply seen and understood. I feel it was one of the first few times for that part of myself to be really seen and understood.\n\nIt was a very beautiful experience for me as I could also see that my struggles around giving and receiving are not unique and other people have also similar experiences."
+      }
+    },
+    "nathan-apr-17": {
+      "author": { "name": "Nathan", "avatar": "avatars/nathan-stamboultgis.jpg" },
+      "parent": {
+        "date_iso": "2026-04-17",
+        "text": "This was a beautiful call. And I say that even though I noticed myself being way more slugglish and slow than usual - even those were held in forgiveness.\n\nI think there was a deeper understanding of the complexity of forgiveness after today's call. One of my confusions was something along the lines of \"how does it make sense to forgive even if I haven't done wrong\".....but there's a deeper understanding now that if you ask for it, it shall be given (deep gratitude goes to the person who opened up on the call and allowed this to be brought into the light).\n\nI write this the morning after the call and I notice a visceral change in my degree of gracefulness with self, other and the world.\n\nThank you Pierre and all who joined ❤️"
+      }
+    },
+    "nathan-apr-3": {
+      "author": { "name": "Nathan", "avatar": "avatars/nathan-stamboultgis.jpg" },
+      "parent": {
+        "date_iso": "2026-04-03",
+        "text": "Such a fantastic session. I've just finished some post session journaling, and have collided them into a post-session takeaway that seems to combine an assortment of the various insights into one somewhat cohesive piece, which has been really helpful for locking in some really nice insights and learnings.\n\nThe main thing being that I'm realising how there's a subtle tendency for me to \"under-receive\" and how this actually robs the other person of \"giving\" to me and consequently means that the a \"true\" reciprocity isn't achieved.\n\nAnd finally, I also want to share how beautiful it was to have a joint feeling of \"being on the right path\" with all of the members of the community. There is such a feeling of aliveness that emerges for me in the group sessions, like all of my parts are singing in \"one big chorus\"....it really is something special."
+      }
+    },
+    "malik-apr-17": {
+      "author": { "name": "Malik", "avatar": "https://assets.skool.com/f/68fa49176a1e43d5af83106c2a0d5e20/2e0f014a12754d90950772803b21058c99f7ac5948de4a43b56d88e15d3209c9.jpg" },
+      "parent": {
+        "date_iso": "2026-04-17",
+        "text": "Today was an amazing session. I didn't know what to expect but I left this call high on energy and left with insights that will continue to improve my life. Such a great space to share with solid guys who show love and support. I'm truly grateful for these calls and I'm grateful for all the guys who continue to show up. Looking forward to next session."
+      }
+    },
+    "alex-apr-17": {
+      "author": { "name": "Alex", "avatar": "avatars/alex-strains.jpg" },
+      "parent": {
+        "date_iso": "2026-04-17",
+        "text": "I managed to finally make it onto a call and am extremely glad I did so. The theme of forgiveness ended up really resonating with me and it was so interesting hearing everyone's thoughts.\n\nI came into this not knowing what to expect but I was shocked at how encouraging and open everyone was to each other. It took me a bit, but I was able to tap into forgiveness and have some quite profound realisations and shifts.\n\nI will be making it a priority to show up to these calls in the future. Thank you to Pierre for running this and thank you to all who participated."
+      }
+    },
+    "raffi-apr-3": {
+      "author": { "name": "Raffi", "avatar": "https://assets.skool.com/f/1ad1ca4ece4b4f3b9059354e60a93599/a30aa0e86b3f4c549b03bf8a107f20569382e8d42713452482551629a758b6c8.jpg" },
+      "parent": {
+        "date_iso": "2026-04-03",
+        "text": "What a beautiful practice session that was. I really enjoyed having my guards down and just enjoying being myself. I could feel that's what everyone was doing and it was such a beautiful space to be in"
+      }
+    },
+    "patrik-mar-7": {
+      "author": { "name": "Patrik", "avatar": "https://assets.skool.com/f/ffab5da82a0d437c8c9530b8ca39790c/ab22892c16c34404a6c29e63aac337d05db38ab52f0f4e47a926c21024244675.jpg" },
+      "parent": {
+        "date_iso": "2026-03-07",
+        "text": "I loved today's call. I had access to blissful states for a long time, but I had a massive realization that I don't have to get absorbed into it. So instead of getting distracted by the bliss, I could just let the bliss waves move around my body in a way that was not as distracting.\n\nAnd I felt way more grounded after that. It was like sitting at the beach, observing the beauty and absolute pristine enjoyment, instead of jumping into the water and playing like a little kid.\n\nI also found the attunement really cool. It was like a merging of some sort where I was the person I talked to, and my entire visual field expanded and there was no separation.\n\nAnd the second meditation made me feel at home, which is huge. Because ever since I was a kid, I was like, \"I don't belong on this planet.\" But Mother Earth loves me and I love it.\n\nSo let's create something remarkable together to bring back the spark to the world.\n\nOverall, it just felt like a unification of everything."
+      }
+    }
+  },
+  "stars": [
+    { "id": "s01", "fragment": "4 years more mature in 4 months", "themes": ["Transformation"], "testimonial_id": "raffaello-mar-7", "fragment_in": "continuation" },
+    { "id": "s02", "fragment": "Life overall has just become easier and more peaceful", "themes": ["Inner Calm", "Transformation"], "testimonial_id": "nick-mar-8", "fragment_in": "parent" },
+    { "id": "s03", "fragment": "my results with girls drastically improved", "themes": ["Relationships"], "testimonial_id": "raffaello-mar-7", "fragment_in": "parent" },
+    { "id": "s04", "fragment": "I got referred into a technical selling role", "themes": ["Work & Mastery"], "testimonial_id": "cristian-mar-7", "fragment_in": "continuation" },
+    { "id": "s05", "fragment": "My parents are kind of just leaving me alone now", "themes": ["Relationships"], "testimonial_id": "cristian-mar-7", "fragment_in": "continuation" },
+    { "id": "s06", "fragment": "I'm handling difficult people way more easily", "themes": ["Relationships", "Inner Calm"], "testimonial_id": "cristian-mar-7", "fragment_in": "continuation" },
+    { "id": "s07", "fragment": "My mind's malleability and adaptability", "themes": ["Work & Mastery", "Transformation"], "testimonial_id": "cristian-mar-7", "fragment_in": "parent" },
+    { "id": "s08", "fragment": "I left feeling more in control of myself", "themes": ["Inner Calm"], "testimonial_id": "dillon-mar-10", "fragment_in": "parent" },
+    { "id": "s09", "fragment": "The depth I can experience in relationships", "themes": ["Relationships"], "testimonial_id": "nick-mar-8", "fragment_in": "parent" },
+    { "id": "s10", "fragment": "Despite projections arising, handling it with a lot of equanimity", "themes": ["Inner Calm"], "testimonial_id": "florjan-mar-7-second", "fragment_in": "parent" },
+    { "id": "s11", "fragment": "feeling his brotherly love", "themes": ["Belonging"], "testimonial_id": "jack-mar-10", "fragment_in": "parent" },
+    { "id": "s12", "fragment": "I'm not the only one in this situation", "themes": ["Belonging"], "testimonial_id": "francois-apr-3", "fragment_in": "parent" },
+    { "id": "s13", "fragment": "a deeper meaning, behind creating my business", "themes": ["Work & Mastery"], "testimonial_id": "patrik-apr-3", "fragment_in": "parent" },
+    { "id": "s14", "fragment": "I felt deeply seen and understood", "themes": ["Belonging"], "testimonial_id": "antonio-apr-3", "fragment_in": "parent" },
+    { "id": "s15", "fragment": "a visceral change in my degree of gracefulness", "themes": ["Transformation"], "testimonial_id": "nathan-apr-17", "fragment_in": "parent" },
+    { "id": "s16", "fragment": "a subtle tendency for me to \"under-receive\"", "themes": ["Transformation"], "testimonial_id": "nathan-apr-3", "fragment_in": "parent" },
+    { "id": "s17", "fragment": "a great space to share with solid guys", "themes": ["Belonging"], "testimonial_id": "malik-apr-17", "fragment_in": "parent" },
+    { "id": "s18", "fragment": "shocked at how encouraging and open everyone was", "themes": ["Belonging"], "testimonial_id": "alex-apr-17", "fragment_in": "parent" },
+    { "id": "s19", "fragment": "having my guards down and just enjoying being myself", "themes": ["Belonging", "Inner Calm"], "testimonial_id": "raffi-apr-3", "fragment_in": "parent" },
+    { "id": "s20", "fragment": "way more grounded after that", "themes": ["Inner Calm"], "testimonial_id": "patrik-mar-7", "fragment_in": "parent" }
+  ]
+};
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+Promise.resolve(DATA).then(data => {
+    const { stars, testimonials } = data;
+    const mobile = window.matchMedia('(max-width: 767px)').matches;
+    const container = document.getElementById('constellation');
+    const starEls = [];
+
+    stars.forEach((star, i) => {
+      const t = testimonials[star.testimonial_id];
+      const el = document.createElement('div');
+      el.className = 'star' + (getVisited().has(star.id) ? ' visited' : '');
+      el.dataset.themes = JSON.stringify(star.themes);
+
+      {
+        // cluster position — stored for push-apart pass below
+        const primary = star.themes[0];
+        const c = CLUSTERS[primary] || CLUSTERS['Transformation'];
+        const angle  = pr(i * 2.91) * Math.PI * 2;
+        const radius = pr(i * 7.13) * JITTER;
+        // Mobile: 190vh × 150vw pannable canvas — spread stars across both axes
+        const yMin = mobile ? 3  : 6;
+        const yMax = mobile ? 90 : 88;
+        const xMin = mobile ? 4  : 5;
+        const xMax = mobile ? 93 : 90;
+        star._x = Math.min(Math.max(c.cx + Math.cos(angle) * radius, xMin), xMax);
+        star._y = Math.min(Math.max(c.cy + Math.sin(angle) * radius, yMin), yMax);
+
+        el.style.left = star._x + '%';
+        el.style.top  = star._y + '%';
+
+        const baseOp = (0.6 + pr(i * 1.7) * 0.28).toFixed(3);
+        el.style.setProperty('--base-op', baseOp);
+        star._op = parseFloat(baseOp); // used by mobile stagger
+
+        if (!mobile) {
+          // drift only on desktop
+          const appDelay   = (pr(i * 6.1) * 3).toFixed(2) + 's';
+          const driftDur   = (7 + pr(i * 5.7) * 6).toFixed(1) + 's';
+          const driftDelay = (-(pr(i * 3.9) * 7)).toFixed(1) + 's';
+          const d = (a, b) => (signed(pr(i * a)) * b).toFixed(1) + 'px';
+          el.style.animationDelay = `${appDelay}, ${driftDelay}`;
+          el.style.setProperty('--drift-dur', driftDur);
+          el.style.setProperty('--dx1', d(11, 12)); el.style.setProperty('--dy1', d(13, 12));
+          el.style.setProperty('--dx2', d(17, 12)); el.style.setProperty('--dy2', d(19, 12));
+          el.style.setProperty('--dx3', d(23, 12)); el.style.setProperty('--dy3', d(29, 12));
+        }
+
+        el.innerHTML =
+          '<div class="fragment">' + esc(star.fragment) + '</div>' +
+          '<div class="dot"></div>';
+      }
+
+      // fragment size variance: shorter = larger type
+      const flen = star.fragment.length;
+      const fragEl = el.querySelector('.fragment');
+      // mobile uses slightly smaller sizes since viewport is narrower
+      if (mobile) {
+        fragEl.style.fontSize = flen < 28 ? '15px' : flen < 52 ? '13px' : '11.5px';
+      } else {
+        fragEl.style.fontSize = flen < 28 ? '17px' : flen < 52 ? '15px' : '13px';
+      }
+
+      // click
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        openPortal(star, t);
+        saveVisit(star.id);
+        el.classList.add('visited');
+        updateCounter(stars.length);
+        document.getElementById('hint').classList.remove('show');
+      });
+
+      container.appendChild(el);
+      starEls.push(el);
+    });
+
+    // push-apart: iterate until no stars are too close
+    {
+      const MIN = mobile ? 12 : 11; // % distance; larger on mobile for touch targets
+      const xClamp = mobile ? [4, 93] : [4, 91];
+      const yClamp = mobile ? [3, 90] : [5, 89];
+      for (let iter = 0; iter < 40; iter++) {
+        stars.forEach((a, ai) => {
+          if (!a._x) return;
+          stars.forEach((b, bi) => {
+            if (bi <= ai || !b._x) return;
+            const dx = b._x - a._x, dy = b._y - a._y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < MIN && dist > 0.01) {
+              const push = (MIN - dist) / 2;
+              const nx = dx / dist, ny = dy / dist;
+              a._x = Math.min(Math.max(a._x - nx * push, xClamp[0]), xClamp[1]);
+              a._y = Math.min(Math.max(a._y - ny * push, yClamp[0]), yClamp[1]);
+              b._x = Math.min(Math.max(b._x + nx * push, xClamp[0]), xClamp[1]);
+              b._y = Math.min(Math.max(b._y + ny * push, yClamp[0]), yClamp[1]);
+            }
+          });
+        });
+      }
+      // apply resolved positions
+      stars.forEach((star, i) => {
+        if (!star._x) return;
+        starEls[i].style.left = star._x + '%';
+        starEls[i].style.top  = star._y + '%';
+      });
+    }
+
+    // mobile: stagger opacity reveal (no keyframe animation)
+    if (mobile) {
+      stars.forEach((star, i) => {
+        setTimeout(() => {
+          starEls[i].style.opacity = star._op;
+        }, 200 + i * 60);
+      });
+    }
+
+    // desktop hover → dim neighbours + draw connecting lines
+    if (!mobile) {
+      const linesSvg = document.getElementById('lines-svg');
+      let hideTimer = null;
+
+      function showLines(hovIdx) {
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        linesSvg.classList.remove('active');
+        while (linesSvg.firstChild) linesSvg.removeChild(linesSvg.firstChild);
+
+        const a = stars[hovIdx];
+        if (!a._x) return;
+        const aThemes = new Set(a.themes);
+        const ax = (a._x / 100) * window.innerWidth;
+        const ay = (a._y / 100) * window.innerHeight;
+
+        stars.forEach((b, bi) => {
+          if (bi === hovIdx || !b._x) return;
+          if (!b.themes.some(t => aThemes.has(t))) return;
+          const bx = (b._x / 100) * window.innerWidth;
+          const by = (b._y / 100) * window.innerHeight;
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', ax.toFixed(1));
+          line.setAttribute('y1', ay.toFixed(1));
+          line.setAttribute('x2', bx.toFixed(1));
+          line.setAttribute('y2', by.toFixed(1));
+          linesSvg.appendChild(line);
+        });
+
+        // double-rAF ensures transition fires
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          linesSvg.classList.add('active');
+        }));
+      }
+
+      function hideLines() {
+        linesSvg.classList.remove('active');
+        hideTimer = setTimeout(() => {
+          while (linesSvg.firstChild) linesSvg.removeChild(linesSvg.firstChild);
+          hideTimer = null;
+        }, 420);
+      }
+
+      starEls.forEach((el, i) => {
+        el.addEventListener('mouseenter', () => {
+          starEls.forEach((o, j) => { if (i !== j) o.classList.add('dimmed'); });
+          showLines(i);
+        });
+        el.addEventListener('mouseleave', () => {
+          starEls.forEach(o => o.classList.remove('dimmed'));
+          hideLines();
+        });
+      });
+    }
+
+    // draw background star field
+    drawBgStars();
+    window.addEventListener('resize', drawBgStars);
+
+    updateCounter(stars.length);
+
+    // show chrome
+    setTimeout(() => {
+      document.getElementById('theme-bar').classList.add('show');
+      document.getElementById('counter').classList.add('show');
+    }, 1400);
+
+    // first-visit hint
+    if (getVisited().size === 0) {
+      setTimeout(() => {
+        const h = document.getElementById('hint');
+        h.textContent = mobile ? 'tap a star' : 'click a star';
+        h.classList.add('show');
+      }, 4000);
+    }
+
+    // theme filter
+    document.querySelectorAll('.tbtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        starEls.forEach((el, i) => {
+          const themes = JSON.parse(el.dataset.themes);
+          const shouldDim = theme !== 'all' && !themes.includes(theme);
+          el.classList.toggle('dimmed', shouldDim);
+          // on mobile restore individual opacity when un-dimming (no CSS animation to redo)
+          if (mobile && !shouldDim) el.style.opacity = stars[i]._op;
+        });
+      });
+    });
+  });
+</script>
+</body>
+</html>
